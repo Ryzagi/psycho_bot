@@ -40,8 +40,8 @@ bot = Bot(token=args.telegram_token)
 storage = MemoryStorage()
 
 dispatcher = Dispatcher(bot, storage=storage, loop=asyncio.get_event_loop())
-
-LLM = ChatOpenAI(model_name="gpt-3.5-turbo", stop=["\nHuman:"])
+chain_type_kwargs = {"stop": ["\nHuman:"]}
+LLM = ChatOpenAI(model_name="gpt-3.5-turbo", model_kwargs=chain_type_kwargs)
 
 # Load roles from the JSON file
 ROLES = load_roles_from_file(ROLES_FILE)

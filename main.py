@@ -18,6 +18,7 @@ from langchain.schema import messages_from_dict, messages_to_dict
 from config import DEFAULT_TEMPLATE, Prompt, WELCOME_MESSAGE, DATA_STRUCTURE, PREMIUM_MESSAGE, LIMIT_MESSAGE, \
     ERROR_MESSAGE
 from utils import load_roles_from_file, load_user_roles, save_user_roles
+from langchain.chat_models import ChatOpenAI
 
 DATABASE_DIR = Path(__file__).parent / "database"
 ROLES_FILE = "config/roles.json"
@@ -40,7 +41,7 @@ storage = MemoryStorage()
 
 dispatcher = Dispatcher(bot, storage=storage, loop=asyncio.get_event_loop())
 
-LLM = OpenAI(model_name="gpt-3.5-turbo", stop=["\nHuman:"])
+LLM = ChatOpenAI(model_name="gpt-3.5-turbo", stop=["\nHuman:"])
 
 # Load roles from the JSON file
 ROLES = load_roles_from_file(ROLES_FILE)

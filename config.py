@@ -4,8 +4,7 @@ based on user needs. Current conversation: {history} Human: {input} Medical assi
 
 PREMIUM_MESSAGE = """Premium message"""
 
-WELCOME_MESSAGE = """Hi! I am an assistant at Vishal, I will help you with choosing a doctor.\nIf you already 
-know who you need,  you can choose in the menu bar.\nHow can I help you? """
+WELCOME_MESSAGE = """Hi! I am an assistant at Vishal, I will help you with choosing a doctor.\nIf you already know who you need,  you can choose in the menu bar.\nHow can I help you? """
 
 ERROR_MESSAGE = "Hi! Press /start to start a new conversation."
 

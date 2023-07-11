@@ -15,6 +15,7 @@ from aiogram.contrib.fsm_storage.memory import MemoryStorage
 from aiogram.utils import executor
 
 from langchain.schema import messages_from_dict, messages_to_dict
+from starlette import status
 
 from data import Message
 from config import DEFAULT_TEMPLATE, Prompt, WELCOME_MESSAGE, DATA_STRUCTURE, PREMIUM_MESSAGE, LIMIT_MESSAGE, \
@@ -97,6 +98,10 @@ async def start(request: Message):
             json.dump(DATA_STRUCTURE, f)
     USER_ROLES[str(request.user_id)] = "Psychotherapist"
 
+
+@app.get("/health", status_code=status.HTTP_200_OK)
+async def health():
+    return {"result": "OK"}
 
 # Define the endpoint for handling queries
 @app.post(MESSAGE_ENDPOINT)

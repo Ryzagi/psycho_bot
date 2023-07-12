@@ -13,7 +13,11 @@ from langchain import ConversationChain, PromptTemplate
 from aiogram import Bot, Dispatcher, types
 from aiogram.contrib.fsm_storage.memory import MemoryStorage
 from aiogram.utils import executor
-
+from tenacity import (
+    retry,
+    stop_after_attempt,
+    wait_random_exponential,
+)
 from langchain.schema import messages_from_dict, messages_to_dict
 from starlette import status
 
@@ -105,6 +109,7 @@ async def health():
 
 # Define the endpoint for handling queries
 @app.post(MESSAGE_ENDPOINT)
+@retry(wait=wait_random_exponential(min=1, max=1000), stop=stop_after_attempt(6))
 async def handle_message(request: Message) -> dict:
     # Load message counts from a JSON file (if it exists)
     if os.path.isfile("message_counts.json"):

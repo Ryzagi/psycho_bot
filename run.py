@@ -45,7 +45,7 @@ async def start(message: types.Message):
         # Example for MESSAGE_ENDPOINT
         async with session.post(
                 "http://localhost:8000/api/start",
-                json={"message": message.text},
+                json={"message": message.text, "user_id": message.from_user.id},
         ) as response:
             result_text = await response.json()
 

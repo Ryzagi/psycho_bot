@@ -33,7 +33,7 @@ USER_ROLES_FILE = "user_roles.json"
 
 START_ENDPOINT = "/api/start"
 MESSAGE_ENDPOINT = "/api/message"
-
+CHANGE_PROMPT_ENDPOINT = "/api/change_prompt"
 
 
 app = FastAPI()
@@ -102,14 +102,14 @@ async def start(request: Message):
             json.dump(DATA_STRUCTURE, f)
     USER_ROLES[str(request.user_id)] = "Psychotherapist"
 
-
+@app.post(CHANGE_PROMPT_ENDPOINT)
 @app.get("/health", status_code=status.HTTP_200_OK)
 async def health():
     return {"result": "OK"}
 
 # Define the endpoint for handling queries
 @app.post(MESSAGE_ENDPOINT)
-@retry(wait=wait_random_exponential(min=1, max=1000), stop=stop_after_attempt(6))
+#@retry(wait=wait_random_exponential(min=1, max=1000), stop=stop_after_attempt(6))
 async def handle_message(request: Message) -> dict:
     # Load message counts from a JSON file (if it exists)
     if os.path.isfile("message_counts.json"):

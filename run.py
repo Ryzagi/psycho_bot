@@ -34,6 +34,32 @@ RESTART_KEYBOARD = types.ReplyKeyboardMarkup(
     keyboard=[[KeyboardButton('/start')]], resize_keyboard=True, one_time_keyboard=True
 )
 
+def try_(func):
+    async def try_except(message):
+        error = ""
+        for i in range(4):
+            try:
+                await func(message)
+                return None
+            except Exception as e:
+                print(e)
+                error = str(e).lower()
+                pass
+            await asyncio.sleep(1)
+        if "overloaded with other requests" in error:
+            await bot.send_message(
+                message.from_user.id,
+                "\nPlease, try again later, We are currently under heavy load",
+            )
+        else:
+            await bot.send_message(
+                message.from_user.id,
+                '\nSomething went wrong, please type "/start" to start over',
+            )
+        return None
+
+    return try_except
+
 
 # Define a handler for the "/start" command
 @dispatcher.message_handler(commands=["start"])
@@ -59,6 +85,7 @@ async def start(message: types.Message):
 
 # Define the handler function for the /query command
 @dispatcher.message_handler()
+@try_
 async def handle_query_command(message: types.Message):
     await bot.send_chat_action(
         message.from_user.id, action=types.ChatActions.TYPING

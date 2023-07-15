@@ -191,7 +191,7 @@ async def handle_message(request: Message) -> dict:
         if "Retry-After" in e.headers:
             suggested_wait_time = float(e.headers["Retry-After"])
         time.sleep(suggested_wait_time)  # Wait for the suggested time
-        return {"result": "Rate limit reached. Please try again."}
+        return {"result": "OpenAI rate limit reached. Please try again."}
     except Exception as e:
         # Handle other exceptions
         return {"result": f"An error {e} occurred. Please try again."}

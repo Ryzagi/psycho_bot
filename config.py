@@ -10,22 +10,10 @@ ERROR_MESSAGE = "Hi! Press /start to start a new conversation."
 
 LIMIT_MESSAGE = """Your limit is reached. Please buy a subscription to continue."""
 
-DATA_STRUCTURE = [
-        {
-            'type': 'human',
-            'data': {
-                'content': '',
-                'additional_kwargs': {}
-            }
-        },
-        {
-            'type': 'ai',
-            'data': {
-                'content': '',
-                'additional_kwargs': {}
-            }
-        }
-    ]
+DATA_STRUCTURE = {
+    "history": [],
+    "memory_moving_summary_buffer": ""
+}
 
 
 class Prompt:

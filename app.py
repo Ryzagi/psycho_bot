@@ -8,7 +8,7 @@ import time
 from pathlib import Path
 
 from fastapi import FastAPI
-from langchain.memory import ConversationBufferMemory, ChatMessageHistory
+from langchain.memory import ConversationBufferMemory, ChatMessageHistory, ConversationSummaryBufferMemory
 from langchain.llms import OpenAI
 from langchain import ConversationChain, PromptTemplate
 from aiogram import Bot, Dispatcher, types
@@ -43,7 +43,7 @@ app = FastAPI()
 
 chain_type_kwargs = {"stop": ["\nHuman:"]}
 LLM = ChatOpenAI(model_name="gpt-4", model_kwargs=chain_type_kwargs, max_tokens=256)
-
+MEMORY = ConversationSummaryBufferMemory(llm=LLM, max_token_limit=100)
 # Load roles from the JSON file
 ROLES = load_roles_from_file(ROLES_FILE)
 
@@ -150,15 +150,15 @@ async def handle_message(request: Message) -> dict:
                 # Parse the JSON data from the string
                 retrieved_from_db = json.loads(json_string)
 
-            retrieved_messages = messages_from_dict(retrieved_from_db)
+            retrieved_messages = messages_from_dict(retrieved_from_db["history"])
             retrieved_chat_history = ChatMessageHistory(messages=retrieved_messages)
-            retrieved_memory = ConversationBufferMemory(chat_memory=retrieved_chat_history)
+            MEMORY.chat_memory = retrieved_chat_history
+            MEMORY.moving_summary_buffer = retrieved_from_db["memory_moving_summary_buffer"]
 
             if current_role:
                 # Find the role prompt for the current role
                 role_prompt = next((r["prompt"] for r in ROLES if r["name"] == current_role), "")
                 Prompt.prompt = role_prompt
-                print(Prompt.prompt)
             else:
                 Prompt.prompt = DEFAULT_TEMPLATE
 
@@ -166,19 +166,21 @@ async def handle_message(request: Message) -> dict:
             reloaded_chain = ConversationChain(
                 llm=LLM,
                 verbose=True,
-                memory=retrieved_memory,
+                memory=MEMORY,
                 prompt=PROMPT,
             )
-            chatbot_response = reloaded_chain.run(input=request.message)
+            chatbot_response = reloaded_chain.predict(input=request.message)
 
             with open(DATABASE_DIR / f"{request.user_id}.json", "w") as f:
                 json.dump(USER_TO_CONVERSATION_ID, f)
-
-            extracted_messages = reloaded_chain.memory.chat_memory.messages
-            ingest_to_db = messages_to_dict(extracted_messages)
             # Save the data to the file with new messages
+            print(MEMORY.moving_summary_buffer)
+            db_to_dump = {
+                "history": messages_to_dict(MEMORY.buffer),
+                "memory_moving_summary_buffer": MEMORY.moving_summary_buffer
+            }
             with open(DATABASE_DIR / f"{request.user_id}.json", "w", encoding="utf-8") as f:
-                json.dump(ingest_to_db, f)
+                json.dump(db_to_dump, f)
             # Update counts of messages
             with open("message_counts.json", "w") as f:
                 json.dump(USER_TO_CONVERSATION_ID, f)

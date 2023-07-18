@@ -205,7 +205,7 @@ async def handle_message(request: Message) -> dict:
             ---------------- {summaries} 
             Current conversation: {history} 
             Human: {question} 
-            Psychotherapist (include blank lines): """
+            Psychotherapist (You must always include blank lines in text): """
             messages = [
                 SystemMessagePromptTemplate.from_template(system_template),
                 HumanMessagePromptTemplate.from_template("{question}")

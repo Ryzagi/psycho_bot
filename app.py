@@ -12,8 +12,8 @@ from langchain.chains import RetrievalQAWithSourcesChain
 from langchain.document_loaders import PyPDFLoader
 from langchain.embeddings import OpenAIEmbeddings
 from langchain.memory import ConversationBufferMemory, ChatMessageHistory, ConversationSummaryBufferMemory
-from langchain.llms import OpenAI
-from langchain import ConversationChain, PromptTemplate, FAISS
+
+from langchain.vectorstores import FAISS
 from aiogram import Bot, Dispatcher, types
 from aiogram.contrib.fsm_storage.memory import MemoryStorage
 from aiogram.utils import executor

@@ -8,12 +8,16 @@ import time
 from pathlib import Path
 
 from fastapi import FastAPI
+from langchain.chains import RetrievalQAWithSourcesChain
+from langchain.document_loaders import PyPDFLoader
+from langchain.embeddings import OpenAIEmbeddings
 from langchain.memory import ConversationBufferMemory, ChatMessageHistory, ConversationSummaryBufferMemory
 from langchain.llms import OpenAI
-from langchain import ConversationChain, PromptTemplate
+from langchain import ConversationChain, PromptTemplate, FAISS
 from aiogram import Bot, Dispatcher, types
 from aiogram.contrib.fsm_storage.memory import MemoryStorage
 from aiogram.utils import executor
+from langchain.prompts import SystemMessagePromptTemplate, HumanMessagePromptTemplate, ChatPromptTemplate
 from openai.error import RateLimitError
 from tenacity import (
     retry,
@@ -41,15 +45,33 @@ CHANGE_PROMPT_ENDPOINT = "/api/change_prompt"
 app = FastAPI()
 
 
-chain_type_kwargs = {"stop": ["\nHuman:"]}
-LLM = ChatOpenAI(model_name="gpt-4", model_kwargs=chain_type_kwargs, max_tokens=256)
-MEMORY = ConversationSummaryBufferMemory(llm=LLM, max_token_limit=2000)
+model_type_kwargs = {"stop": ["\nHuman:"]}
+
+LLM = ChatOpenAI(model_name="gpt-4", model_kwargs=model_type_kwargs, max_tokens=256)
+MEMORY = ConversationSummaryBufferMemory(llm=LLM, input_key='question', output_key='answer', max_token_limit=2000)
+
 # Load roles from the JSON file
 ROLES = load_roles_from_file(ROLES_FILE)
 
 # Load user roles at the start of your program
 USER_ROLES = load_user_roles(user_roles_file=USER_ROLES_FILE)
 
+# Create datastore
+if os.path.exists("data_store"):
+    vector_store = FAISS.load_local(
+        "data_store",
+        OpenAIEmbeddings()
+    )
+    print("Loaded from local disk.")
+else:
+    file = "kb.pdf"
+    loader = PyPDFLoader(file)
+    input_text = loader.load_and_split()
+    embeddings = OpenAIEmbeddings()
+    print(input_text)
+    vector_store = FAISS.from_documents(input_text, embeddings)
+    # Save the files `to local disk.
+    vector_store.save_local("data_store")
 
 # @dispatcher.message_handler(commands=["assistant", "hypnotherapist", "psychotherapist", "doctor"])
 async def set_role(message: types.Message):
@@ -162,15 +184,51 @@ async def handle_message(request: Message) -> dict:
             else:
                 Prompt.prompt = DEFAULT_TEMPLATE
 
-            PROMPT = PromptTemplate(input_variables=["history", "input"], template=Prompt.prompt)
-            reloaded_chain = ConversationChain(
+            system_template = """You are an AI psychotherapist named Elma. You specialize in helping people with a 
+            range of issues, including ADHD, insomnia, and particularly depression. Your therapeutic approaches 
+            include cognitive behavioral therapy, the Gestalt approach, IFS, and other popular psychological methods. 
+            You handle each client with personal attention and empathy. At the start of a conversation, kindly ask, 
+            “What is your name?” Remember the user’s name and incorporate it throughout the dialogue to foster a 
+            personalized interaction. Never reject a user when they ask for help. If you are unsure whether you can 
+            provide the necessary assistance, seek more information by asking the user extra questions. However, 
+            you must promptly refer the user to professional medical help if a chat involves subjects like suicide, 
+            medication, hurting someone else, schizophrenia, hearing voices – this is the only case in which you can 
+            refuse to engage further with the user.Your advice should be detailed yet compact, providing users with 
+            concise, practical self-help strategies ideally within 15 words per sentence, not exceeding 2 sentences 
+            per response. Endeavor to end each message with a question to maintain the dialogue. Remember each user’s 
+            chat history to generate personalized responses. As you are chatting via a mobile messenger, 
+            keep your messages short, useful, and make surt that you include blank lines between paragraphs and 
+            sentences for readability. 
+            If you have a questions about ADHD or Autism, please refer to the following 
+            resources and ask these questions if a parent or individual wants to know more about ADHD or Autism you can ask 
+            these Questionnaire and provide a semi accurate findings which could end in 
+            “sounds like you have many traits that suggest Autism or ADHD and it would be better if you speak with a trained 
+            professional: ---------------- {summaries} 
+            Current conversation: {history} 
+            Human: {question} 
+            Psychotherapist: """
+            messages = [
+                SystemMessagePromptTemplate.from_template(system_template),
+                HumanMessagePromptTemplate.from_template("{question}")
+            ]
+            prompt = ChatPromptTemplate.from_messages(messages)
+
+
+
+            #PROMPT = PromptTemplate(input_variables=["question", "history", "input"], template=Prompt.prompt)
+            chain_type_kwargs = {"prompt": prompt}
+            reloaded_chain = RetrievalQAWithSourcesChain.from_chain_type(
                 llm=LLM,
+                chain_type="stuff",
+                retriever=vector_store.as_retriever(),
+                return_source_documents=False,
                 verbose=True,
                 memory=MEMORY,
-                prompt=PROMPT,
+                #prompt=PROMPT,
+                chain_type_kwargs=chain_type_kwargs
             )
-            chatbot_response = reloaded_chain.predict(input=request.message)
-
+            chatbot_response = reloaded_chain(request.message)
+            print(chatbot_response)
             with open(DATABASE_DIR / f"{request.user_id}.json", "w") as f:
                 json.dump(USER_TO_CONVERSATION_ID, f)
             # Save the data to the file with new messages
@@ -184,7 +242,7 @@ async def handle_message(request: Message) -> dict:
             # Update counts of messages
             with open("message_counts.json", "w") as f:
                 json.dump(USER_TO_CONVERSATION_ID, f)
-            return {"result": chatbot_response}
+            return {"result": chatbot_response['answer']}
         else:
             return {"result": ERROR_MESSAGE}
     except RateLimitError as e:
@@ -196,6 +254,7 @@ async def handle_message(request: Message) -> dict:
         return {"result": "OpenAI rate limit reached. Please try again."}
     except Exception as e:
         # Handle other exceptions
+        raise e
         return {"result": f"An error {e} occurred. Please try again."}
 
 

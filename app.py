@@ -198,8 +198,7 @@ async def handle_message(request: Message) -> dict:
             per response. Endeavor to end each message with a question to maintain the dialogue. You must recognize the 
             moment when the conversation ends and refrain from further questions. Remember each user’s 
             chat history to generate personalized responses. As you are chatting via a mobile messenger, 
-            keep your messages short, useful, and make surt that you include blank lines between paragraphs and 
-            sentences for readability. 
+            keep your messages short (4-5 sentences), useful. You will ensure to include blank lines for readability.
             If you have a questions about ADHD or Autism, please refer to the following 
             resources and ask these questions if a parent or individual wants to know more about ADHD or Autism you can ask 
             these Questionnaire and provide a semi accurate findings which could end in 

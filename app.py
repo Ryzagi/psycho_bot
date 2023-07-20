@@ -253,11 +253,12 @@ async def handle_message(request: Message) -> dict:
         suggested_wait_time = 6 / 1000  # Default wait time in seconds
         if "Retry-After" in e.headers:
             suggested_wait_time = float(e.headers["Retry-After"])
-        time.sleep(suggested_wait_time)  # Wait for the suggested time
+        await asyncio.sleep(suggested_wait_time)
+          # Wait for the suggested time
         return {"result": "OpenAI rate limit reached. Please try again."}
     except Exception as e:
         # Handle other exceptions
-        raise e
+        #raise e
         return {"result": f"An error {e} occurred. Please try again."}
 
 

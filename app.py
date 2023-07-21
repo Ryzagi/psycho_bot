@@ -121,9 +121,9 @@ async def start(request: Message):
     if not os.path.isdir(DATABASE_DIR):
         os.mkdir(DATABASE_DIR)
 
-    if not os.path.isfile(DATABASE_DIR / f"{request.user_id}.json"):
-        with open(DATABASE_DIR / f"{request.user_id}.json", 'w', encoding="utf-8") as f:
-            json.dump(DATA_STRUCTURE, f)
+    #if not os.path.isfile(DATABASE_DIR / f"{request.user_id}.json"):
+    with open(DATABASE_DIR / f"{request.user_id}.json", 'w', encoding="utf-8") as f:
+        json.dump(DATA_STRUCTURE, f)
     USER_ROLES[str(request.user_id)] = "Psychotherapist"
 
 @app.post(CHANGE_PROMPT_ENDPOINT)

@@ -27,7 +27,7 @@ from tenacity import (
 from langchain.schema import messages_from_dict, messages_to_dict
 from starlette import status
 
-from data import Message
+from data import Message, Start
 from config import DEFAULT_TEMPLATE, Prompt, WELCOME_MESSAGE, DATA_STRUCTURE, PREMIUM_MESSAGE, LIMIT_MESSAGE, \
     ERROR_MESSAGE
 from utils import load_roles_from_file, load_user_roles, save_user_roles
@@ -117,7 +117,7 @@ async def show_message_count(message: types.Message):
 
 # Define the endpoint for handling queries
 @app.post(START_ENDPOINT)
-async def start(request: Message):
+async def start(request: Start):
     if not os.path.isdir(DATABASE_DIR):
         os.mkdir(DATABASE_DIR)
 

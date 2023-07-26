@@ -12,6 +12,7 @@ from langchain.chains import RetrievalQAWithSourcesChain
 from langchain.document_loaders import PyPDFLoader
 from langchain.embeddings import OpenAIEmbeddings
 from langchain.memory import ConversationBufferMemory, ChatMessageHistory, ConversationSummaryBufferMemory
+from langchain.output_parsers import pydantic
 
 from langchain.vectorstores import FAISS
 from aiogram import Bot, Dispatcher, types
@@ -19,6 +20,7 @@ from aiogram.contrib.fsm_storage.memory import MemoryStorage
 from aiogram.utils import executor
 from langchain.prompts import SystemMessagePromptTemplate, HumanMessagePromptTemplate, ChatPromptTemplate
 from openai.error import RateLimitError
+from pydantic import ValidationError
 from tenacity import (
     retry,
     stop_after_attempt,
@@ -214,8 +216,12 @@ async def handle_message(request: Message) -> dict:
         await asyncio.sleep(suggested_wait_time)
         # Wait for the suggested time
         return {"result": "OpenAI rate limit reached. Please try again."}
+    except ValidationError:
+        # Handle ValidationError
+        return {"result": ERROR_MESSAGE}
     except Exception as e:
         # Handle other exceptions
+        #raise e
         return {"result": f"An error {e} occurred. Please try again."}
 
 

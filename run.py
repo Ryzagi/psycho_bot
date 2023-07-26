@@ -85,7 +85,6 @@ async def start(message: types.Message):
 
 # Define the handler function for the /query command
 @dispatcher.message_handler()
-@try_
 async def handle_query_command(message: types.Message):
     await bot.send_chat_action(
         message.from_user.id, action=types.ChatActions.TYPING

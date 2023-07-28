@@ -93,34 +93,76 @@ async def start(message: types.Message):
     )
 
 
+user_buffering_preference = {}
+
+
+@dispatcher.message_handler(commands=['enable_buffering'])
+async def enable_buffering(message: types.Message):
+    user_id = message.from_user.id
+    user_buffering_preference[user_id] = True
+    await message.reply("Message buffering is now enabled!")
+
+
+@dispatcher.message_handler(commands=['disable_buffering'])
+async def disable_buffering(message: types.Message):
+    user_id = message.from_user.id
+    user_buffering_preference[user_id] = False
+    await message.reply("Message buffering is now disabled!")
+
+
 @dispatcher.message_handler()
 async def handle_query_command(message: types.Message):
     user_id = message.from_user.id
 
-    # Get the current timestamp
-    now = datetime.now()
+    # Check if the user has a preference set for buffering
+    buffering_enabled = user_buffering_preference.get(user_id, False)
 
-    # Check if the user already has a message buffer
-    if user_id in user_message_buffers:
-        # Get the previous message buffer for this user
-        buffer_data = user_message_buffers[user_id]
+    if buffering_enabled:
+        # Get the current timestamp
+        now = datetime.now()
 
-        # Reset the timer for the task (cancel and create a new one)
-        buffer_data["task"].cancel()
-        buffer_data["task"] = asyncio.create_task(process_message_buffer(user_id))
+        # Check if the user already has a message buffer
+        if user_id in user_message_buffers:
+            # Get the previous message buffer for this user
+            buffer_data = user_message_buffers[user_id]
 
-        # Add the current message to the buffer
-        buffer_data["messages"].append(message.text)
-        buffer_data["timestamp"] = now
+            # Reset the timer for the task (cancel and create a new one)
+            buffer_data["task"].cancel()
+            buffer_data["task"] = asyncio.create_task(process_message_buffer(user_id))
+
+            # Add the current message to the buffer
+            buffer_data["messages"].append(message.text)
+            buffer_data["timestamp"] = now
+        else:
+            # Create a new message buffer for the user
+            user_message_buffers[user_id] = {
+                "messages": [message.text],
+                "timestamp": now,
+                "task": asyncio.create_task(process_message_buffer(user_id))
+            }
+
+        await bot.send_chat_action(user_id, action=types.ChatActions.TYPING)
     else:
-        # Create a new message buffer for the user
-        user_message_buffers[user_id] = {
-            "messages": [message.text],
-            "timestamp": now,
-            "task": asyncio.create_task(process_message_buffer(user_id))
-        }
+        # If buffering is disabled, send the message immediately to the API
+        await bot.send_chat_action(user_id, action=types.ChatActions.TYPING)
 
-    await bot.send_chat_action(user_id, action=types.ChatActions.TYPING)
+        # Send a request to the FastAPI endpoint to get the most relevant paragraph
+        async with aiohttp.ClientSession() as session:
+            async with session.post(
+                "http://localhost:8000/api/message",
+                json={"message": message.text, "user_id": user_id},
+            ) as response:
+                result_text = await response.json()
+
+        # Send the API response as separate messages to the user
+        num_messages = len(result_text["result"]) // MAX_MESSAGE_LENGTH
+        for i in range(num_messages + 1):
+            await bot.send_chat_action(user_id, action=types.ChatActions.TYPING)
+            await asyncio.sleep(1)
+            await bot.send_message(
+                user_id,
+                text=result_text["result"][i * MAX_MESSAGE_LENGTH: (i + 1) * MAX_MESSAGE_LENGTH],
+            )
 
 
 # Function to process the message buffer and send the API request
@@ -166,38 +208,6 @@ async def wait_for_time_window(user_id):
     await asyncio.sleep(MESSAGE_BUFFER_TIME_WINDOW)
     # Process the message buffer after the time window
     await process_message_buffer(user_id)
-
-
-
-# Define the handler function for the /query command
-#dispatcher.message_handler()
-#sync def handle_query_command(message: types.Message):
-#   await bot.send_chat_action(
-#       message.from_user.id, action=types.ChatActions.TYPING
-#   )
-#   # Send a request to the FastAPI endpoint to get the most relevant paragraph
-#   async with aiohttp.ClientSession() as session:
-#       # Example for MESSAGE_ENDPOINT
-#       async with session.post(
-#               "http://localhost:8000/api/message",
-#               json={"message": message.text, "user_id": message.from_user.id},
-#       ) as response:
-#           result_text = await response.json()
-#   print(result_text)
-#   num_messages = len(result_text["result"]) // MAX_MESSAGE_LENGTH
-#   await bot.send_chat_action(
-#       message.from_user.id, action=types.ChatActions.TYPING
-#   )
-#   for i in range(num_messages + 1):
-#       await bot.send_chat_action(
-#           message.from_user.id, action=types.ChatActions.TYPING
-#       )
-#       await asyncio.sleep(1)
-#       await bot.send_message(
-#           message.from_user.id,
-#           text=result_text["result"][i * MAX_MESSAGE_LENGTH: (i + 1) * MAX_MESSAGE_LENGTH],
-#       )
-
 
 # Start polling for updates from Telegram
 if __name__ == "__main__":

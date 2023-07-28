@@ -6,7 +6,6 @@ from typing import Optional, List, Tuple
 
 import psycopg2
 
-from converbot.constants import DEV_ENV
 from psycopg2 import extensions
 
 

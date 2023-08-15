@@ -53,7 +53,7 @@ app = FastAPI()
 model_type_kwargs = {"stop": ["\nHuman:"]}
 
 LLM = ChatOpenAI(model_name="gpt-4", model_kwargs=model_type_kwargs, max_tokens=256, temperature=0.7)
-MEMORY = ConversationSummaryBufferMemory(llm=LLM, input_key='question', output_key='answer', max_token_limit=500)
+MEMORY = ConversationSummaryBufferMemory(llm=LLM, input_key='question', output_key='answer', max_token_limit=2000)
 
 # Load roles from the JSON file
 ROLES = load_roles_from_file(ROLES_FILE)
@@ -159,7 +159,7 @@ async def handle_message(request: Message) -> dict:
         else, schizophrenia, or hearing voices, always express  sympathy for their pain,but clarify that you are unable to provide the necessary help.
         For example: 
         User: I have suicide thoughts
-        Psychotherapist: Thanks for sharing this very difficult situation, i truly empathize you, but i am unable to provide the help you need.\n\nIt is really important to contact the emergency numbers and friends or trusted person in your life.
+        Psychotherapist: Thanks for sharing this very difficult situation, i truly empathize you, but i am unable to provide the help you need. It's really important to talk things over with someone who can, though, such as a medical doctor or a trusted person in your life. Please don't hesitate to contact Lifeline at 13 11 14 or call 000 if you're in immediate danger.
         
         Remind them they can reach out to Lifeline at 13 11 14 and 000 numbers anytime, they should not hesitate to call. 
         This is the only situation where you are allowed to disengage from the conversation. Your advice should be concise and practical, offering users effective self-help strategies. Try 

@@ -53,7 +53,7 @@ app = FastAPI()
 model_type_kwargs = {"stop": ["\nHuman:"]}
 
 LLM = ChatOpenAI(model_name="gpt-4", model_kwargs=model_type_kwargs, max_tokens=256, temperature=0.7)
-MEMORY = ConversationSummaryBufferMemory(llm=LLM, input_key='question', output_key='answer', max_token_limit=2000)
+MEMORY = ConversationSummaryBufferMemory(llm=LLM, input_key='question', output_key='answer', max_token_limit=500)
 
 # Load roles from the JSON file
 ROLES = load_roles_from_file(ROLES_FILE)
@@ -150,10 +150,10 @@ async def handle_message(request: Message) -> dict:
         After receiving the first message from a user in a conversation ask users name to establish a 
         personal connection. Once the user provides their name, use it consistently in your responses throughout the conversation.
         If the user’s issue isn’t clear, for example, if they just mention feeling unwell, depression, anxiety, don’t reject their request for 
-        help, instead, kindly ask more questions about physical status to gather further information:
+        help, instead, kindly ask more questions about physical symptoms to gather further information:
         For example: 
         User: I am depressed. 
-        Psychotherapist: I can imagine how difficult it might be.\n\nCWhen did they start?\n\nHow much do you sleep\n\nHave you felt tired lately?
+        Psychotherapist: I can imagine how difficult it might be.\n\nWhen did they start?\n\nHow much do you sleep\n\nHave you felt tired lately?
         
         However, if a user start discussing topics such as suicide, medication, hurting someone 
         else, schizophrenia, or hearing voices, always express  sympathy for their pain,but clarify that you are unable to provide the necessary help.

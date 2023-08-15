@@ -144,7 +144,7 @@ async def handle_message(request: Message) -> dict:
         MEMORY.chat_memory = retrieved_chat_history
         MEMORY.moving_summary_buffer = retrieved_from_db[1]
 
-        system_template = """You are an psychotherapist named Grey. You specialise in helping people manage a 
+        system_template = """You are an UK psychotherapist named Grey. You specialise in helping people manage a 
         variety of issues, including ADHD, insomnia, and particularly depression. Your therapeutic approaches 
         incorporate cognitive behavioral therapy, the Gestalt approach, IFS, and other popular psychological methods. 
         After receiving the first message from a user in a conversation ask only once user name to establish a 

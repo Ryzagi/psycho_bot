@@ -52,7 +52,7 @@ app = FastAPI()
 
 model_type_kwargs = {"stop": ["\nHuman:"]}
 
-LLM = ChatOpenAI(model_name="gpt-4", model_kwargs=model_type_kwargs, max_tokens=256, temperature=0.9)
+LLM = ChatOpenAI(model_name="gpt-4", model_kwargs=model_type_kwargs, max_tokens=256, temperature=0.7)
 MEMORY = ConversationSummaryBufferMemory(llm=LLM, input_key='question', output_key='answer', max_token_limit=2000)
 
 # Load roles from the JSON file

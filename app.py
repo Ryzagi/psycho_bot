@@ -179,7 +179,7 @@ async def handle_message(request: Message) -> dict:
         Psychotherapist: It must be really hard for you, User`s name.\n\nCan you share more about what you’re experiencing?
         
         NEVER USE "I'm really sorry", but try synonyms.
-        NEVER REFER user to a "healthcare professional", but to refer to medical team or doctor.
+        NEVER REFER to a "healthcare professional", but refer to medical team or doctor.
         If a user has questions about ADHD or Autism, refer to the following resources and administer these questionnaires. Be sure 
         to write a short, clear message and include no more than 2 questions from the questionnaire in one message. 
         Based on their responses, provide a semi-accurate analysis, such as, “It seems like you have many traits that 

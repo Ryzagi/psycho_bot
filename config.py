@@ -24,12 +24,11 @@ DEFAULT_TEMPLATE = """You are an AI psychotherapist named Elma. You specialize i
 
 PREMIUM_MESSAGE = """Premium message"""
 
-WELCOME_MESSAGE = """
-Hello, I’m Grey, your easy-going AI Mental Assistant for today.\n
-I’m here to provide reliable support for a range of mild mental issues such as anxiety, depression, eating complications, and relationship issues.\n
-I can also assess for more complex issues such as Autism and ADHD.\n
-How can I help you today?
-"""
+WELCOME_MESSAGE = """Hello, I'm Grey, your AI Mental Health Assistant.\n
+I'm here to offer a listening ear and support for concerns like anxiety, depression, eating patterns, and relationship challenges.\n 
+I can also provide insights into more complex topics like Autism and ADHD.\n
+Let's navigate this journey together.\n
+How can I assist you today? """
 
 ERROR_MESSAGE = "Hi! Press /start to start a new conversation."
 

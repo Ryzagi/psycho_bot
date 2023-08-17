@@ -110,7 +110,7 @@ async def delete_history(message: types.Message):
     # Send a welcome message with a "start" button
     await bot.send_message(
         message.from_user.id,
-        text="Histpy deleted!",
+        text="History deleted!",
         # reply_markup=RESTART_KEYBOARD
     )
 

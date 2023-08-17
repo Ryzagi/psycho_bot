@@ -93,6 +93,28 @@ async def start(message: types.Message):
     )
 
 
+# Define a handler for the "/start" command
+@dispatcher.message_handler(commands=["delete_my_history"])
+async def delete_history(message: types.Message):
+    # Show a "typing" action to the user
+    await bot.send_chat_action(message.from_user.id, action=types.ChatActions.TYPING)
+
+    async with aiohttp.ClientSession() as session:
+        # Example for MESSAGE_ENDPOINT
+        async with session.post(
+                "http://localhost:8000/api/delete_user_history",
+                json={"message": message.text, "user_id": message.from_user.id},
+        ) as response:
+            result_text = await response.json()
+
+    # Send a welcome message with a "start" button
+    await bot.send_message(
+        message.from_user.id,
+        text="Histpy deleted!",
+        # reply_markup=RESTART_KEYBOARD
+    )
+
+
 user_buffering_preference = {}
 
 
@@ -149,8 +171,8 @@ async def handle_query_command(message: types.Message):
         # Send a request to the FastAPI endpoint to get the most relevant paragraph
         async with aiohttp.ClientSession() as session:
             async with session.post(
-                "http://localhost:8000/api/message",
-                json={"message": message.text, "user_id": user_id},
+                    "http://localhost:8000/api/message",
+                    json={"message": message.text, "user_id": user_id},
             ) as response:
                 result_text = await response.json()
 
@@ -181,8 +203,8 @@ async def process_message_buffer(user_id):
         # Send a request to the FastAPI endpoint to get the most relevant paragraph
         async with aiohttp.ClientSession() as session:
             async with session.post(
-                "http://localhost:8000/api/message",
-                json={"message": combined_message, "user_id": user_id},
+                    "http://localhost:8000/api/message",
+                    json={"message": combined_message, "user_id": user_id},
             ) as response:
                 result_text = await response.json()
 
@@ -208,6 +230,7 @@ async def wait_for_time_window(user_id):
     await asyncio.sleep(MESSAGE_BUFFER_TIME_WINDOW)
     # Process the message buffer after the time window
     await process_message_buffer(user_id)
+
 
 # Start polling for updates from Telegram
 if __name__ == "__main__":

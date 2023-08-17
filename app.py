@@ -45,7 +45,7 @@ USER_ROLES_FILE = "user_roles.json"
 START_ENDPOINT = "/api/start"
 MESSAGE_ENDPOINT = "/api/message"
 CHANGE_PROMPT_ENDPOINT = "/api/change_prompt"
-
+DELETE_ENDPOINT = "/api/delete_user_history"
 HISTORY_WRITER = SQLHistoryWriter.from_config(Path(os.environ.get('SQL_CONFIG_PATH')))
 
 app = FastAPI()
@@ -121,11 +121,18 @@ async def show_message_count(message: types.Message):
     return {"result": f"Remaining {remaining} free messages."}
 
 
+# Define the endpoint for deleting user history
+@app.post(DELETE_ENDPOINT)
+async def start(request: Start):
+    HISTORY_WRITER.delete_user_history(str(request.user_id))
+
+
 # Define the endpoint for handling queries
 @app.post(START_ENDPOINT)
 async def start(request: Start):
     USER_ROLES[str(request.user_id)] = "Psychotherapist"
     HISTORY_WRITER.create_new_user(str(request.user_id))
+
 
 @app.post(CHANGE_PROMPT_ENDPOINT)
 @app.get("/health", status_code=status.HTTP_200_OK)
@@ -233,7 +240,7 @@ async def handle_message(request: Message) -> dict:
         return {"result": ERROR_MESSAGE}
     except Exception as e:
         # Handle other exceptions
-        #raise e
+        # raise e
         return {"result": f"An error {e} occurred. Please try again."}
 
 

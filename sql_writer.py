@@ -245,6 +245,25 @@ class SQLHistoryWriter:
             self._connection = psycopg2.connect(**self._connection_params)
             self.create_new_user(user_id)
 
+    def delete_user_history(self, user_id) -> None:
+        """
+        Delete a user's history from the database.
+        """
+        try:
+            with self._connection.cursor() as cursor:
+                cursor.execute(
+                    """
+                    DELETE FROM ConversationCheckpoints
+                    WHERE user_id = %(user_id)s;
+                    """,
+                    {"user_id": user_id}
+                )
+                self._connection.commit()  # Commit the changes to the database
+        except psycopg2.InterfaceError:
+            self._connection.close()
+            self._connection = psycopg2.connect(**self._connection_params)
+            self.delete_user_history(user_id)
+
 
     def get_all_messages_companions(self):
         """

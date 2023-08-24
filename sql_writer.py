@@ -487,4 +487,4 @@ class SQLHistoryWriter:
         except psycopg2.InterfaceError:
             self._connection.close()
             self._connection = psycopg2.connect(**self._connection_params)
-            return self.add_user_with_basic_subscription(user_id)
+            return self.add_new_user_with_basic_subscription(user_id)

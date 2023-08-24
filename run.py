@@ -114,7 +114,47 @@ async def delete_history(message: types.Message):
         # reply_markup=RESTART_KEYBOARD
     )
 
+# Define a handler for the "/start" command
+@dispatcher.message_handler(commands=["premium_mode"])
+async def premium_mode(message: types.Message):
+    # Show a "typing" action to the user
+    await bot.send_chat_action(message.from_user.id, action=types.ChatActions.TYPING)
 
+    async with aiohttp.ClientSession() as session:
+        # Example for MESSAGE_ENDPOINT
+        async with session.post(
+                "http://localhost:8000/api/premium_mode",
+                json={"message": message.text, "user_id": message.from_user.id},
+        ) as response:
+            result_text = await response.json()
+
+    # Send a welcome message with a "start" button
+    await bot.send_message(
+        message.from_user.id,
+        text="Premium mode enabled!",
+        # reply_markup=RESTART_KEYBOARD
+    )
+
+# Define a handler for the "/start" command
+@dispatcher.message_handler(commands=["basic_mode"])
+async def basic_mode(message: types.Message):
+    # Show a "typing" action to the user
+    await bot.send_chat_action(message.from_user.id, action=types.ChatActions.TYPING)
+
+    async with aiohttp.ClientSession() as session:
+        # Example for MESSAGE_ENDPOINT
+        async with session.post(
+                "http://localhost:8000/api/basic_mode",
+                json={"message": message.text, "user_id": message.from_user.id},
+        ) as response:
+            result_text = await response.json()
+
+    # Send a welcome message with a "start" button
+    await bot.send_message(
+        message.from_user.id,
+        text="Basic mode enabled!",
+        # reply_markup=RESTART_KEYBOARD
+    )
 user_buffering_preference = {}
 
 

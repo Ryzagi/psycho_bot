@@ -142,8 +142,6 @@ class SQLHistoryWriter:
                 user_id, user_message, chatbot_message, timestamp
             )
 
-    import json
-
     def write_checkpoint(
             self,
             user_id: str,
@@ -412,5 +410,81 @@ class SQLHistoryWriter:
         else:
             return [], None  # If user_id not found, return an empty list and None for memory_moving_summary_buffer
 
+    def get_subscription_id(self, user_id: str) -> Optional[str]:
+        try:
+            with self._connection.cursor() as cursor:
+                cursor.execute(
+                    """
+                    SELECT subscription_id FROM testpayments
+                    WHERE user_id = %s
+                    """,
+                    (user_id,),
+                )
+                result = cursor.fetchone()
+                if result:
+                    return result[0]  # The subscription_id value
+                else:
+                    return None  # User not found in testpayments
+
+        except psycopg2.InterfaceError:
+            self._connection.close()
+            self._connection = psycopg2.connect(**self._connection_params)
+            return self.get_subscription_id(user_id)
+
+    def update_subscription_to_premium(self, user_id: str) -> bool:
+        try:
+            with self._connection.cursor() as cursor:
+                cursor.execute(
+                    """
+                    UPDATE testpayments
+                    SET subscription_id = '2'
+                    WHERE user_id = %s
+                    """,
+                    (user_id,),
+                )
+                self._connection.commit()
+                return True  # Update successful
+
+        except psycopg2.InterfaceError:
+            self._connection.close()
+            self._connection = psycopg2.connect(**self._connection_params)
+            return self.update_subscription_to_premium(user_id)
 
 
+    def update_subscription_to_basic(self, user_id: str) -> bool:
+        try:
+            with self._connection.cursor() as cursor:
+                cursor.execute(
+                    """
+                    UPDATE testpayments
+                    SET subscription_id = '1'
+                    WHERE user_id = %s
+                    """,
+                    (user_id,),
+                )
+                self._connection.commit()
+                return True  # Update successful
+
+        except psycopg2.InterfaceError:
+            self._connection.close()
+            self._connection = psycopg2.connect(**self._connection_params)
+            return self.update_subscription_to_premium(user_id)
+
+    def add_new_user_with_basic_subscription(self, user_id: str) -> bool:
+        try:
+            with self._connection.cursor() as cursor:
+                cursor.execute(
+                    """
+                    INSERT INTO testpayments (user_id, client_secret, client_email, subscription_id)
+                    SELECT %s, '', '', '1'
+                    WHERE NOT EXISTS (SELECT 1 FROM testpayments WHERE user_id = %s)
+                    """,
+                    (user_id, user_id),
+                )
+                self._connection.commit()
+                return True  # Insertion successful
+
+        except psycopg2.InterfaceError:
+            self._connection.close()
+            self._connection = psycopg2.connect(**self._connection_params)
+            return self.add_user_with_basic_subscription(user_id)

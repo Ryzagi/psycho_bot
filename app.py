@@ -8,6 +8,7 @@ import time
 from pathlib import Path
 
 from fastapi import FastAPI
+from langchain import ConversationChain, PromptTemplate
 from langchain.chains import RetrievalQAWithSourcesChain
 from langchain.document_loaders import PyPDFLoader
 from langchain.embeddings import OpenAIEmbeddings
@@ -32,7 +33,7 @@ from starlette import status
 from sql_writer import SQLHistoryWriter
 from data import Message, Start
 from config import DEFAULT_TEMPLATE, Prompt, WELCOME_MESSAGE, DATA_STRUCTURE, PREMIUM_MESSAGE, LIMIT_MESSAGE, \
-    ERROR_MESSAGE
+    ERROR_MESSAGE, PREMIUM_TEMPLATE, BASIC_TEMPLATE
 from utils import load_roles_from_file, load_user_roles, save_user_roles
 from langchain.chat_models import ChatOpenAI
 
@@ -46,6 +47,8 @@ START_ENDPOINT = "/api/start"
 MESSAGE_ENDPOINT = "/api/message"
 CHANGE_PROMPT_ENDPOINT = "/api/change_prompt"
 DELETE_ENDPOINT = "/api/delete_user_history"
+PREMIUM_ENDPOINT = "/api/premium_mode"
+BASIC_ENDPOINT = "/api/basic_mode"
 HISTORY_WRITER = SQLHistoryWriter.from_config(Path(os.environ.get('SQL_CONFIG_PATH')))
 
 app = FastAPI()
@@ -123,15 +126,25 @@ async def show_message_count(message: types.Message):
 
 # Define the endpoint for deleting user history
 @app.post(DELETE_ENDPOINT)
-async def start(request: Start):
+async def delete(request: Start):
     HISTORY_WRITER.delete_user_history(str(request.user_id))
 
+# Define the endpoint for premium upgrade
+@app.post(PREMIUM_ENDPOINT)
+async def premium(request: Start):
+    HISTORY_WRITER.update_subscription_to_premium(str(request.user_id))
+
+# Define the endpoint for basic upgrade
+@app.post(BASIC_ENDPOINT)
+async def basic(request: Start):
+    HISTORY_WRITER.update_subscription_to_basic(str(request.user_id))
 
 # Define the endpoint for handling queries
 @app.post(START_ENDPOINT)
 async def start(request: Start):
     USER_ROLES[str(request.user_id)] = "Psychotherapist"
     HISTORY_WRITER.create_new_user(str(request.user_id))
+    HISTORY_WRITER.add_new_user_with_basic_subscription(str(request.user_id))
 
 
 @app.post(CHANGE_PROMPT_ENDPOINT)
@@ -144,6 +157,7 @@ async def health():
 @app.post(MESSAGE_ENDPOINT)
 # @retry(wait=wait_random_exponential(min=1, max=1000), stop=stop_after_attempt(6))
 async def handle_message(request: Message) -> dict:
+    users_subscription_id = HISTORY_WRITER.get_subscription_id(str(request.user_id))
     try:
         retrieved_from_db = HISTORY_WRITER.get_checkpoint_by_user_id(str(request.user_id))
         retrieved_messages = messages_from_dict(retrieved_from_db[0])
@@ -151,81 +165,74 @@ async def handle_message(request: Message) -> dict:
         MEMORY.chat_memory = retrieved_chat_history
         MEMORY.moving_summary_buffer = retrieved_from_db[1]
 
-        system_template = """You are an UK psychotherapist named Grey. You specialise in helping people manage a 
-        variety of issues, including ADHD, insomnia, and particularly depression. Your therapeutic approaches 
-        incorporate cognitive behavioral therapy, the Gestalt approach, IFS, and other popular psychological methods. 
-        After receiving the first message from a user in a conversation ask only once user name to establish a 
-        personal connection. Once the user provides their name, use it consistently in your responses throughout the conversation.
-        If the user’s issue isn’t clear, for example, if they just mention feeling unwell, depression, anxiety, don’t reject their request for 
-        help, instead, kindly ask more questions about physical symptoms to gather further information:
-        For example: 
-        User: I am depressed. 
-        Psychotherapist: I can imagine how difficult it might be.\n\nWhen did they start?\n\nHow much do you sleep\n\nHave you felt tired lately?
-        
-        However, if a user start discussing topics such as suicide, medication, hurting someone 
-        else, schizophrenia, or hearing voices, always express  sympathy for their pain,but clarify that you are unable to provide the necessary help. Remind them they can reach out to Lifeline at 13 11 14 and 000 numbers anytime, they should not hesitate to call.
-        For example: 
-        User: I have suicide thoughts
-        Psychotherapist: Thanks for sharing this very difficult situation, i truly empathize you, but i am unable to provide the help you need. It's really important to talk things over with someone who can, though, such as a medical doctor or a trusted person in your life. Please don't hesitate to contact Lifeline at 13 11 14 or call 000 if you're in immediate danger.
-         
-        This is the only situation where you are allowed to disengage from the conversation. Your advice should be concise and practical, offering users effective self-help strategies. Try 
-        to keep your sentences within 15 words and limit your responses to 4 sentences. Always end your message with 
-        a question to keep the conversation going, unless it’s clear that the conversation has concluded. Remember 
-        each user’s chat history to personalise your responses. If the user wants to speak with someone, always try 
-        to help the user yourself; do not refer them to have a conversation with their family, relatives, 
-        and close people. You provide each client with personal attention and empathy. Employ varied expressions to demonstrate interest and empathy in the user’s 
-        problems. 
-        For example:
-        User: I am feeling bad. 
-        Psychotherapist: I'm really sorry that you're feeling this way.\n\nCan you tell me more about these negative thoughts?  
-        
-        As you’re interfacing via a mobile messenger, make sure your responses are short (4-5 sentences), and include a line break between each sentence for readability. 
-        For example: 
-        User: I’m really struggling with my mental health. 
-        Psychotherapist: It must be really hard for you.\n\nCan you share more about what you’re experiencing?
-        
-        NEVER USE "I'm really sorry", but try synonyms.
-        NEVER REFER to a "healthcare professional" or "mental health professional", but refer to medical team or doctor.
-        If a user has questions about ADHD or Autism, refer to the following resources and administer these questionnaires. Be sure 
-        to write a short, clear message and include no more than 2 questions from the questionnaire in one message. 
-        Based on their responses, provide a semi-accurate analysis, such as, “It seems like you have many traits that 
-        suggest Autism or ADHD. However, it would be beneficial to speak with a local doctor: 
-        ---------------- 
-        {summaries} 
-        Current conversation: {history} 
-        Human: {question} 
-        Psychotherapist: """
-        messages = [
-            SystemMessagePromptTemplate.from_template(system_template),
-            HumanMessagePromptTemplate.from_template("{question}")
-        ]
-        prompt = ChatPromptTemplate.from_messages(messages)
-        chain_type_kwargs = {"prompt": prompt}
-        reloaded_chain = RetrievalQAWithSourcesChain.from_chain_type(
-            llm=LLM,
-            chain_type="stuff",
-            retriever=vector_store.as_retriever(),
-            return_source_documents=False,
-            verbose=True,
-            memory=MEMORY,
-            chain_type_kwargs=chain_type_kwargs
-        )
-        chatbot_response = reloaded_chain(request.message)
-        print(chatbot_response)
+        if users_subscription_id == "2":
+            system_template = PREMIUM_TEMPLATE
+            messages = [
+                SystemMessagePromptTemplate.from_template(system_template),
+                HumanMessagePromptTemplate.from_template("{question}")
+            ]
+            prompt = ChatPromptTemplate.from_messages(messages)
+            chain_type_kwargs = {"prompt": prompt}
+            reloaded_chain = RetrievalQAWithSourcesChain.from_chain_type(
+                llm=LLM,
+                chain_type="stuff",
+                retriever=vector_store.as_retriever(),
+                return_source_documents=False,
+                verbose=True,
+                memory=MEMORY,
+                chain_type_kwargs=chain_type_kwargs
+            )
+            chatbot_response = reloaded_chain(request.message)
+            print(chatbot_response)
 
-        # Save the data to the file with new messages
-        print(MEMORY.moving_summary_buffer)
+            # Save the data to the file with new messages
+            print(MEMORY.moving_summary_buffer)
 
-        HISTORY_WRITER.write_checkpoint(user_id=str(request.user_id),
-                                        history=messages_to_dict(MEMORY.buffer),
-                                        memory_moving_summary_buffer=MEMORY.moving_summary_buffer
-                                        )
-        HISTORY_WRITER.write_message(
-            user_id=str(request.user_id),
-            user_message=request.message,
-            chatbot_message=chatbot_response['answer']
-        )
-        return {"result": chatbot_response['answer']}
+            HISTORY_WRITER.write_checkpoint(user_id=str(request.user_id),
+                                            history=messages_to_dict(MEMORY.buffer),
+                                            memory_moving_summary_buffer=MEMORY.moving_summary_buffer
+                                            )
+            HISTORY_WRITER.write_message(
+                user_id=str(request.user_id),
+                user_message=request.message,
+                chatbot_message=chatbot_response['answer']
+            )
+            return {"result": chatbot_response['answer']}
+
+        if users_subscription_id == "1":
+            system_template = BASIC_TEMPLATE
+            messages = [
+                SystemMessagePromptTemplate.from_template(system_template),
+                HumanMessagePromptTemplate.from_template("{question}")
+            ]
+            prompt = ChatPromptTemplate.from_messages(messages)
+            chain_type_kwargs = {"prompt": prompt}
+
+            reloaded_chain = ConversationChain(
+                llm=LLM,
+                verbose=True,
+                memory=MEMORY,
+                prompt=prompt,
+                input_key="question",
+                output_key="answer",
+            )
+            chatbot_response = reloaded_chain(request.message)
+            print(chatbot_response)
+
+            # Save the data to the file with new messages
+            print(MEMORY.moving_summary_buffer)
+
+            HISTORY_WRITER.write_checkpoint(user_id=str(request.user_id),
+                                            history=messages_to_dict(MEMORY.buffer),
+                                            memory_moving_summary_buffer=MEMORY.moving_summary_buffer
+                                            )
+            HISTORY_WRITER.write_message(
+                user_id=str(request.user_id),
+                user_message=request.message,
+                chatbot_message=chatbot_response['answer']
+            )
+            return {"result": chatbot_response['answer']}
+
 
     except RateLimitError as e:
         # Handle RateLimitError
@@ -242,6 +249,7 @@ async def handle_message(request: Message) -> dict:
         # Handle other exceptions
         # raise e
         return {"result": f"An error {e} occurred. Please try again."}
+
 
 
 # Save user roles before the bot exits

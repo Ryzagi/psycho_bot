@@ -28,7 +28,7 @@ WELCOME_MESSAGE = """Hello, I'm Grey, your AI Mental Health Assistant.\n
 I'm here to offer a listening ear and support for concerns like anxiety, depression, eating patterns, and relationship challenges.\n 
 I can also provide insights into more complex topics like Autism and ADHD.\n
 Let's navigate this journey together.\n
-How can I assist you today? """
+What is your name and how can I assist you today? """
 
 ERROR_MESSAGE = "Hi! Press /start to start a new conversation."
 

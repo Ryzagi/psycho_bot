@@ -53,7 +53,7 @@ HISTORY_WRITER = SQLHistoryWriter.from_config(Path(os.environ.get('SQL_CONFIG_PA
 
 app = FastAPI()
 
-model_type_kwargs = {"stop": ["\nHuman:"]}
+model_type_kwargs = {"stop": ["\nUser:"]}
 
 LLM = ChatOpenAI(model_name="gpt-4", model_kwargs=model_type_kwargs, max_tokens=256, temperature=0.7)
 MEMORY = ConversationSummaryBufferMemory(llm=LLM, input_key='question', output_key='answer', max_token_limit=2000)
@@ -129,15 +129,18 @@ async def show_message_count(message: types.Message):
 async def delete(request: Start):
     HISTORY_WRITER.delete_user_history(str(request.user_id))
 
+
 # Define the endpoint for premium upgrade
 @app.post(PREMIUM_ENDPOINT)
 async def premium(request: Start):
     HISTORY_WRITER.update_subscription_to_premium(str(request.user_id))
 
+
 # Define the endpoint for basic upgrade
 @app.post(BASIC_ENDPOINT)
 async def basic(request: Start):
     HISTORY_WRITER.update_subscription_to_basic(str(request.user_id))
+
 
 # Define the endpoint for handling queries
 @app.post(START_ENDPOINT)
@@ -166,6 +169,7 @@ async def handle_message(request: Message) -> dict:
         MEMORY.moving_summary_buffer = retrieved_from_db[1]
 
         if users_subscription_id == "2":
+            print(users_subscription_id)
             system_template = PREMIUM_TEMPLATE
             messages = [
                 SystemMessagePromptTemplate.from_template(system_template),
@@ -200,6 +204,7 @@ async def handle_message(request: Message) -> dict:
             return {"result": chatbot_response['answer']}
 
         if users_subscription_id == "1":
+            print(users_subscription_id)
             system_template = BASIC_TEMPLATE
             messages = [
                 SystemMessagePromptTemplate.from_template(system_template),
@@ -233,7 +238,6 @@ async def handle_message(request: Message) -> dict:
             )
             return {"result": chatbot_response['answer']}
 
-
     except RateLimitError as e:
         # Handle RateLimitError
         suggested_wait_time = 6 / 1000  # Default wait time in seconds
@@ -249,7 +253,6 @@ async def handle_message(request: Message) -> dict:
         # Handle other exceptions
         # raise e
         return {"result": f"An error {e} occurred. Please try again."}
-
 
 
 # Save user roles before the bot exits
